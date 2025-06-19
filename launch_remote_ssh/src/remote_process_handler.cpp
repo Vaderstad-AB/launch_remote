@@ -39,14 +39,26 @@ public:
   : Node("remote_process_handler"),
   // get screen process name to kill
   screen_process_name_{declare_parameter<std::string>("screen_process_name")},
-  // construct kill command
-  kill_command_{"screen -S " + screen_process_name_ + " -X quit"}
+  // Construct the command to send Ctrl-C to the screen session
+  interrupt_command_{"screen -S " + screen_process_name_ + " -X stuff ^C"},
+  // Construct the command to gracefully quit the screen session
+  quit_command_{"screen -S " + screen_process_name_ + " -X quit"}
   {
   }
+
   ~RemoteProcessHandler()
   {
-    // execute kill command
-    system(kill_command_.c_str());
+    // Attempt to gracefully stop the process by sending Ctrl-C
+    RCLCPP_INFO(this->get_logger(), "Sending Ctrl-C to the process...");
+    system(interrupt_command_.c_str());
+
+    // Wait for the process to exit (you may want to implement a timeout)
+    RCLCPP_INFO(this->get_logger(), "Waiting for the process to finish...(6 seconds)");
+    std::this_thread::sleep_for(std::chrono::seconds(60)); // Adjust the wait time if necessary
+
+    // After waiting, close the screen session
+    RCLCPP_INFO(this->get_logger(), "Closing the screen session...");
+    system(quit_command_.c_str());
   }
 
   const std::string screen_process_name() const
@@ -56,7 +68,8 @@ public:
   
 private:
   const std::string screen_process_name_ = "";
-  const std::string kill_command_ = "";
+  const std::string interrupt_command_ = "";
+  const std::string quit_command_ = "";
 };
 
 int main(int argc, char * argv[])

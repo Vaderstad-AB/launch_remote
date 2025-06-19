@@ -62,7 +62,7 @@ class ExecuteProcessRemoteSSH(LaunchDescription):
         condition: Optional[Condition] = None
     ):
         # Store arguments
-        self.__user = normalize_to_list_of_substitutions(user)
+        self.__user = normalize_to_list_of_substitutions(user) if user != '' else None
         self.__machine = normalize_to_list_of_substitutions(machine)
         self.__command = command
         self.__port = None if port is None else normalize_to_list_of_substitutions(port)
@@ -121,10 +121,11 @@ class ExecuteProcessRemoteSSH(LaunchDescription):
         self.__full_command += [
             ' -t ',
         ]
-        self.__full_command += self.__user
-        self.__full_command += [
-            '@',
-        ]
+        if self.__user is not None:
+            self.__full_command += self.__user
+            self.__full_command += [
+                '@',
+            ]
         self.__full_command += self.__machine
         self.__full_command += [
             ' \'bash -i -c \\"'
@@ -153,6 +154,8 @@ class ExecuteProcessRemoteSSH(LaunchDescription):
                     output='screen',
                     parameters=[{'screen_process_name': process_name_list}],
                     condition=self.__condition,
+                    respawn=True,  # Automatically restart the node if it crashes
+                    respawn_delay=1.0  # Optional: delay in seconds before restarting
                 ),
             ]
         )
@@ -198,7 +201,7 @@ class ExecuteProcessRemoteSSH(LaunchDescription):
             port = entity.get_attr('port', optional=True)
             if port is not None:
                 kwargs['port'] = parser.parse_substitution(port)
-        
+
         if 'source_paths' not in ignore:
             source_paths = entity.get_attr('source_path', data_type=List[Entity], optional=True)
             if source_paths is not None:
@@ -210,7 +213,7 @@ class ExecuteProcessRemoteSSH(LaunchDescription):
                     e.assert_entity_completely_parsed()
 
         return self, kwargs
-    
+
     @classmethod
     def _parse_cmdline(
         self,
